@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solveur Mathématique</title>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script>
+        // Configuration de MathJax pour les délimiteurs $...$
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']]
+            },
+            svg: {
+                fontCache: 'global'
+            }
+        };
+    </script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f9f9f9;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        textarea, input[type="file"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            display: block;
+            width: 100%;
+            margin: 20px 0;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        .result-box {
+            background-color: #f0f8ff;
+            padding: 15px;
+            border-radius: 4px;
+            border-left: 4px solid #3498db;
+            margin-top: 20px;
+        }
+        .commentary-box { /* Nouveau style pour les commentaires */
+            background-color: #e0f7fa; /* Une couleur différente pour les commentaires */
+            padding: 15px;
+            border-radius: 4px;
+            border-left: 4px solid #00acc1;
+            margin-top: 15px;
+            font-style: italic;
+        }
+        .error-box {
+            background-color: #ffebee;
+            border-left: 4px solid #e74c3c;
+        }
+        pre {
+            white-space: pre-wrap;
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto; /* Permet le défilement horizontal pour les longues formules */
+        }
+        .loading {
+            text-align: center;
+            display: none;
+            margin: 20px 0;
+        }
+        .spinner {
+            border: 4px solid rgba(0,0,0,0.1);
+            border-radius: 50%;
+            border-top: 4px solid #3498db;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Solveur Mathématique</h1>
+        
+        <form method="post" enctype="multipart/form-data" id="mathForm">
+            {% csrf_token %} {# <-- Important pour Django #}
+            
+            <div class="form-group">
+                <label for="input_text">Entrez une équation:</label>
+                <textarea name="input_text" id="input_text" rows="3" 
+                            placeholder="Ex: 2x + 5 = 13">{% if request.method == 'POST' %}{{ request.POST.input_text }}{% endif %}</textarea>
+            </div>
+            
+            <div class="form-group">
+                <label for="input_file">Ou uploader un fichier (PDF/Image):</label>
+                <input type="file" name="input_file" id="input_file" accept=".png,.jpg,.jpeg,.pdf">
+            </div>
+            
+            <button type="submit">Résoudre</button>
+        </form>
+        
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Analyse en cours...</p>
+        </div>
+        
+        {% if error %}
+        <div class="result-box error-box">
+            <h3>Erreur</h3>
+            <p>{{ error }}</p>
+        </div>
+        {% endif %}
+        
+        {% if result %}
+        <div class="result-box">
+            <h3>Résultats</h3>
+            <p><strong>Problème:</strong> {{ result.problem_display }}</p>
+            <p><strong>Solution:</strong> {{ result.solution | safe }}</p>
+            <p><strong>Explication:</strong></p>
+            <pre>{{ result.explanation | safe }}</pre>
+            <p><em>Traité en {{ result.processing_time }} secondes</em></p>
+        </div>
+        {% endif %}
+
+        {% if commentary %} {# Nouvelle section pour les commentaires #}
+        <div class="commentary-box">
+            <h3>Commentaire du tuteur :</h3>
+            <p>{{ commentary | safe }}</p>
+        </div>
+        {% endif %}
+
+    </div>
+
+    <script>
+        document.getElementById('mathForm').addEventListener('submit', function() {
+            document.getElementById('loading').style.display = 'block';
+        });
+    </script>
+</body>
+</html>

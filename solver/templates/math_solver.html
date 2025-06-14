@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MathGPT - Solveur Intelligent</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #10a37f;
+            --sidebar-width: 260px;
+            --header-height: 60px;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            display: flex;
+            background-color: #f7f7f8;
+            color: #343541;
+        }
+        
+        /* Sidebar */
+        .sidebar {
+            width: var(--sidebar-width);
+            height: 100vh;
+            background-color: #202123;
+            color: #ececf1;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.3s ease;
+            position: fixed;
+            z-index: 100;
+        }
+        
+        .sidebar-header {
+            padding: 12px;
+            border-bottom: 1px solid #4d4d4f;
+            margin-bottom: 10px;
+        }
+        
+        .new-chat-btn {
+            width: 100%;
+            padding: 12px;
+            margin: 5px 0;
+            background-color: transparent;
+            border: 1px solid #4d4d4f;
+            border-radius: 6px;
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.2s;
+        }
+        
+        .new-chat-btn:hover {
+            background-color: #2b2c2f;
+        }
+        
+        .history-items {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 5px 0;
+        }
+        
+        .history-item {
+            padding: 10px 12px;
+            margin: 5px 0;
+            border-radius: 6px;
+            cursor: pointer;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .history-item:hover {
+            background-color: #2b2c2f;
+        }
+        
+        .sidebar-footer {
+            padding: 12px;
+            border-top: 1px solid #4d4d4f;
+            margin-top: 10px;
+        }
+        
+        .user-profile {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        
+        .user-profile:hover {
+            background-color: #2b2c2f;
+        }
+        
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background-color: #10a37f;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+        
+        /* Main Content */
+        .main-content {
+            flex-grow: 1;
+            margin-left: var(--sidebar-width);
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        
+        .header {
+            height: var(--header-height);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            border-bottom: 1px solid #e5e5e6;
+            background-color: white;
+        }
+        
+        .menu-btn {
+            display: none;
+            background: none;
+            border: none;
+            font-size: 1.2rem;
+            cursor: pointer;
+        }
+        
+        .header-actions {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+        
+        .auth-btn {
+            padding: 8px 16px;
+            border-radius: 6px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: 500;
+        }
+        
+        .auth-btn:hover {
+            background-color: #0d8e6d;
+        }
+        
+        .settings-btn {
+            background: none;
+            border: none;
+            font-size: 1.2rem;
+            color: #565869;
+            cursor: pointer;
+        }
+        
+        .chat-container {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background-color: white;
+        }
+        
+        .message {
+            max-width: 800px;
+            margin: 0 auto 20px;
+            padding: 20px 0;
+            border-bottom: 1px solid #e5e5e6;
+        }
+        
+        .message-user {
+            font-weight: bold;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .message-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background-color: #e5e5e6;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .message-content {
+            line-height: 1.6;
+            white-space: pre-wrap;
+        }
+        
+        .input-container {
+            padding: 20px;
+            background-color: white;
+            border-top: 1px solid #e5e5e6;
+        }
+        
+        .input-box {
+            max-width: 800px;
+            margin: 0 auto;
+            position: relative;
+        }
+        
+        .input-tabs {
+            display: flex;
+            margin-bottom: 10px;
+        }
+        
+        .input-tab {
+            padding: 8px 16px;
+            cursor: pointer;
+            border: 1px solid #e5e5e6;
+            background: #f7f7f8;
+            border-radius: 6px 6px 0 0;
+            margin-right: 5px;
+        }
+        
+        .input-tab.active {
+            background: white;
+            border-bottom: 1px solid white;
+        }
+        
+        textarea {
+            width: 100%;
+            min-height: 100px;
+            padding: 12px 50px 12px 15px;
+            border: 1px solid #e5e5e6;
+            border-radius: 6px;
+            resize: none;
+            font-size: 1rem;
+        }
+        
+        textarea:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px rgba(16, 163, 127, 0.2);
+        }
+        
+        .send-btn {
+            position: absolute;
+            right: 15px;
+            bottom: 15px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+        
+        .send-btn:hover {
+            background-color: #0d8e6d;
+        }
+        
+        .file-input {
+            display: none;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+                position: fixed;
+                top: 0;
+                left: 0;
+                bottom: 0;
+            }
+            
+            .sidebar.open {
+                transform: translateX(0);
+            }
+            
+            .main-content {
+                margin-left: 0;
+            }
+            
+            .menu-btn {
+                display: block;
+            }
+        }
+        
+        /* Math specific styles */
+        .math-expression {
+            font-family: "Times New Roman", serif;
+            font-size: 1.1em;
+        }
+        
+        .loading-dots {
+            display: inline-block;
+        }
+        
+        .loading-dots::after {
+            content: '.';
+            animation: dots 1.5s steps(5, end) infinite;
+        }
+        
+        @keyframes dots {
+            0%, 20% { content: '.'; }
+            40% { content: '..'; }
+            60% { content: '...'; }
+            80%, 100% { content: ''; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <button class="new-chat-btn">
+                <i class="fas fa-plus"></i>
+                Nouvelle discussion
+            </button>
+        </div>
+        
+        <div class="history-items">
+            {% for item in history %}
+            <div class="history-item">
+                <i class="fas fa-square-root-alt"></i>
+                {{ item.extracted_problem|truncatechars:20 }}
+            </div>
+            {% endfor %}
+        </div>
+        
+        <div class="sidebar-footer">
+            {% if user.is_authenticated %}
+            <div class="user-profile">
+                <div class="user-avatar">
+                    {{ user.username|first|upper }}
+                </div>
+                <div class="user-name">
+                    {{ user.username }}
+                </div>
+            </div>
+            {% else %}
+            <button class="new-chat-btn" onclick="showLoginModal()">
+                <i class="fas fa-sign-in-alt"></i>
+                Se connecter
+            </button>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Main Content -->
+    <div class="main-content">
+        <header class="header">
+            <button class="menu-btn" onclick="toggleSidebar()">
+                <i class="fas fa-bars"></i>
+            </button>
+            
+            <h1>MathSolver</h1>
+            
+            <div class="header-actions">
+                {% if user.is_authenticated %}
+                <button class="settings-btn" title="Paramètres">
+                    <i class="fas fa-cog"></i>
+                </button>
+                {% else %}
+                <button class="auth-btn" onclick="showLoginModal()">
+                    Connexion
+                </button>
+                {% endif %}
+            </div>
+        </header>
+        
+        <div class="chat-container" id="chat-container">
+            <div class="message">
+                <div class="message-user">
+                    <div class="message-avatar">
+                        <i class="fas fa-robot"></i>
+                    </div>
+                    <span>Assistant MathSolver</span>
+                </div>
+                <div class="message-content">
+                    Bonjour ! Je suis votre assistant en mathématiques. Posez-moi n'importe quel problème et je vous aiderai à le résoudre avec des explications détaillées.
+                </div>
+            </div>
+            
+            {% for item in history %}
+            <div class="message">
+                <div class="message-user">
+                    <div class="message-avatar">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <span>Vous</span>
+                </div>
+                <div class="message-content math-expression">
+                    {{ item.extracted_problem }}
+                </div>
+            </div>
+            
+            <div class="message">
+                <div class="message-user">
+                    <div class="message-avatar">
+                        <i class="fas fa-robot"></i>
+                    </div>
+                    <span>MathSolver</span>
+                </div>
+                <div class="message-content math-expression">
+                    {{ item.solution }}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        
+        <div class="input-container">
+            <div class="input-box">
+                <div class="input-tabs">
+                    <div class="input-tab active" onclick="switchInputTab('text')">
+                        <i class="fas fa-font"></i> Texte
+                    </div>
+                    <div class="input-tab" onclick="switchInputTab('file')">
+                        <i class="fas fa-file-upload"></i> Fichier
+                    </div>
+                </div>
+                
+                <div id="text-tab" class="input-tab-content active">
+                    <textarea id="problem-input" placeholder="Entrez votre problème mathématique ici..."></textarea>
+                    <button class="send-btn" onclick="solveProblem()">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+                
+                <div id="file-tab" class="input-tab-content">
+                    <input type="file" id="file-input" class="file-input" accept=".txt,.pdf,.jpg,.jpeg,.png">
+                    <textarea id="file-preview" placeholder="Cliquez pour sélectionner un fichier (texte, image ou PDF)" readonly onclick="document.getElementById('file-input').click()"></textarea>
+                    <button class="send-btn" onclick="solveProblem()">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+                
+                <div style="margin-top: 10px; text-align: center;">
+                    <select id="language" style="padding: 8px; border-radius: 4px; border: 1px solid #e5e5e6;">
+                        <option value="fr">Français</option>
+                        <option value="en">English</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Basculer la sidebar en mobile
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('open');
+        }
+        
+        // Changer entre les onglets d'entrée
+        function switchInputTab(tabName) {
+            document.querySelectorAll('.input-tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.input-tab-content').forEach(content => content.classList.remove('active'));
+            
+            document.querySelector(`.input-tab[onclick="switchInputTab('${tabName}')"]`).classList.add('active');
+            document.getElementById(`${tabName}-tab`).classList.add('active');
+        }
+        
+        // Afficher le modal de connexion (simulé)
+        function showLoginModal() {
+            alert("Fonctionnalité de connexion à implémenter");
+        }
+        
+        // Gérer la sélection de fichier
+        document.getElementById('file-input').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            const preview = document.getElementById('file-preview');
+            preview.value = `Fichier sélectionné: ${file.name}`;
+            
+            // Ici vous pourriez ajouter un aperçu du contenu du fichier
+        });
+        
+        // Résoudre le problème
+        function solveProblem() {
+            const activeTab = document.querySelector('.input-tab-content.active').id;
+            const language = document.getElementById('language').value;
+            const chatContainer = document.getElementById('chat-container');
+            
+            // Afficher le message de l'utilisateur
+            let userMessage = '';
+            if (activeTab === 'text-tab') {
+                userMessage = document.getElementById('problem-input').value.trim();
+            } else {
+                userMessage = document.getElementById('file-preview').value.trim();
+            }
+            
+            if (!userMessage) {
+                alert('Veuillez entrer un problème ou sélectionner un fichier');
+                return;
+            }
+            
+            // Ajouter le message de l'utilisateur au chat
+            const userMessageDiv = document.createElement('div');
+            userMessageDiv.className = 'message';
+            userMessageDiv.innerHTML = `
+                <div class="message-user">
+                    <div class="message-avatar">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <span>Vous</span>
+                </div>
+                <div class="message-content math-expression">
+                    ${userMessage}
+                </div>
+            `;
+            chatContainer.appendChild(userMessageDiv);
+            
+            // Ajouter le message de chargement de l'assistant
+            const loadingDiv = document.createElement('div');
+            loadingDiv.className = 'message';
+            loadingDiv.innerHTML = `
+                <div class="message-user">
+                    <div class="message-avatar">
+                        <i class="fas fa-robot"></i>
+                    </div>
+                    <span>MathGPT</span>
+                </div>
+                <div class="message-content">
+                    <span class="loading-dots">Résolution en cours</span>
+                </div>
+            `;
+            chatContainer.appendChild(loadingDiv);
+            
+            // Faire défiler vers le bas
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            
+            // Envoyer la requête au serveur
+            const formData = new FormData();
+            formData.append('language', language);
+            
+            if (activeTab === 'text-tab') {
+                formData.append('text', userMessage);
+            } else {
+                const fileInput = document.getElementById('file-input');
+                formData.append('file', fileInput.files[0]);
+            }
+            
+            fetch('/api/solve/', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                },
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Supprimer le message de chargement
+                chatContainer.removeChild(loadingDiv);
+                
+                if (data.error) {
+                    // Afficher l'erreur
+                    const errorDiv = document.createElement('div');
+                    errorDiv.className = 'message';
+                    errorDiv.innerHTML = `
+                        <div class="message-user">
+                            <div class="message-avatar">
+                                <i class="fas fa-robot"></i>
+                            </div>
+                            <span>MathGPT</span>
+                        </div>
+                        <div class="message-content" style="color: red;">
+                            ${data.error}
+                        </div>
+                    `;
+                    chatContainer.appendChild(errorDiv);
+                } else {
+                    // Afficher la solution
+                    const solutionDiv = document.createElement('div');
+                    solutionDiv.className = 'message';
+                    solutionDiv.innerHTML = `
+                        <div class="message-user">
+                            <div class="message-avatar">
+                                <i class="fas fa-robot"></i>
+                            </div>
+                            <span>MathGPT</span>
+                        </div>
+                        <div class="message-content math-expression">
+                            ${data.solution}
+                        </div>
+                    `;
+                    chatContainer.appendChild(solutionDiv);
+                    
+                    // Recharger la page si l'utilisateur est connecté pour mettre à jour l'historique
+                    if ('{{ request.user.is_authenticated }}' === 'True') {
+                        setTimeout(() => location.reload(), 1000);
+                    }
+                }
+                
+                // Faire défiler vers le bas
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            })
+            .catch(error => {
+                // Supprimer le message de chargement et afficher l'erreur
+                chatContainer.removeChild(loadingDiv);
+                
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'message';
+                errorDiv.innerHTML = `
+                    <div class="message-user">
+                        <div class="message-avatar">
+                            <i class="fas fa-robot"></i>
+                        </div>
+                        <span>MathGPT</span>
+                    </div>
+                    <div class="message-content" style="color: red;">
+                        Erreur: ${error.message}
+                    </div>
+                `;
+                chatContainer.appendChild(errorDiv);
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            });
+            
+            // Réinitialiser l'entrée
+            if (activeTab === 'text-tab') {
+                document.getElementById('problem-input').value = '';
+            } else {
+                document.getElementById('file-preview').value = '';
+                document.getElementById('file-input').value = '';
+            }
+        }
+        
+        // Permettre d'envoyer avec Entrée (sans shift)
+        document.getElementById('problem-input').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                solveProblem();
+            }
+        });
+    </script>
+</body>
+</html>
