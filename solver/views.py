@@ -68,6 +68,12 @@ def user_math_problems(request):
     
     return JsonResponse(data, safe=False)
 
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.models import User
+import json
 
 @csrf_exempt
 def api_login(request):
@@ -76,6 +82,12 @@ def api_login(request):
             data = json.loads(request.body)
             username = data.get('username')
             password = data.get('password')
+            
+            if not username or not password:
+                return JsonResponse({
+                    'status': 'error', 
+                    'message': 'Nom d\'utilisateur et mot de passe requis'
+                }, status=400)
             
             user = authenticate(username=username, password=password)
             if user is not None:
@@ -89,18 +101,22 @@ def api_login(request):
                         'email': user.email,
                         'first_name': user.first_name,
                         'last_name': user.last_name
-                    },
-                    'token': get_token(request)
+                    }
                 })
             return JsonResponse({
                 'status': 'error', 
-                'message': 'Nom d\'utilisateur ou mot de passe incorrect'
+                'message': 'Identifiants invalides'
             }, status=401)
         except json.JSONDecodeError:
             return JsonResponse({
                 'status': 'error', 
                 'message': 'Données JSON invalides'
             }, status=400)
+        except Exception as e:
+            return JsonResponse({
+                'status': 'error', 
+                'message': str(e)
+            }, status=500)
     return JsonResponse({
         'status': 'error', 
         'message': 'Méthode non autorisée'
@@ -151,24 +167,28 @@ def api_register(request):
             first_name = data.get('first_name', '')
             last_name = data.get('last_name', '')
             
+            # Validation des champs obligatoires
             if not username or not email or not password:
                 return JsonResponse({
                     'status': 'error',
-                    'message': 'Tous les champs sont obligatoires'
+                    'message': 'Tous les champs obligatoires doivent être remplis'
                 }, status=400)
                 
+            # Vérification de l'unicité du username
             if User.objects.filter(username=username).exists():
                 return JsonResponse({
                     'status': 'error',
-                    'message': 'Ce nom d\'utilisateur existe déjà'
+                    'message': 'Ce nom d\'utilisateur est déjà pris'
                 }, status=400)
             
+            # Vérification de l'unicité de l'email
             if User.objects.filter(email=email).exists():
                 return JsonResponse({
                     'status': 'error',
                     'message': 'Cet email est déjà utilisé'
                 }, status=400)
             
+            # Création de l'utilisateur
             user = User.objects.create_user(
                 username=username,
                 email=email,
@@ -176,6 +196,9 @@ def api_register(request):
                 first_name=first_name,
                 last_name=last_name
             )
+            
+            # Authentification automatique après inscription
+            login(request, user)
             
             return JsonResponse({
                 'status': 'success',
@@ -196,13 +219,15 @@ def api_register(request):
         except Exception as e:
             return JsonResponse({
                 'status': 'error',
-                'message': str(e)
+                'message': f'Erreur serveur: {str(e)}'
             }, status=500)
     return JsonResponse({
         'status': 'error',
         'message': 'Méthode non autorisée'
     }, status=405)
 
+
+    
 
 def login_view(request):
     if request.method == 'POST':
@@ -494,13 +519,116 @@ def api_solve_math_problem(request):
             {'error': 'Une erreur inattendue est survenue.'},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
-def math_solver_view(request):
-    """Vue template pour l'interface utilisateur"""
-    history = []
-    if request.user.is_authenticated:
-        history = MathProblem.objects.filter(user=request.user).order_by('-created_at')[:20]
     
-    return render(request, 'math_solver.html', {'history': history})
 
+def math_solver_view(request):
+    """Vue locale pour l'interface utilisateur avec même logique que l'API"""
+    context = {'history': []}
+    
+    if request.user.is_authenticated:
+        context['history'] = MathProblem.objects.filter(user=request.user).order_by('-created_at')[:20]
+    
+    if request.method == 'POST':
+        start_time = time.time()
+        
+        try:
+            # Gestion des fichiers et texte d'entrée
+            file = request.FILES.get('file')
+            text_input = request.POST.get('text', '')
+            language = request.POST.get('language', 'fr')
+            
+            if not file and not text_input:
+                context['error'] = 'Aucune entrée fournie. Veuillez fournir un texte ou un fichier.'
+                return render(request, 'math_solver.html', context)
+            
+            # Traitement du fichier
+            problem_text = ''
+            file_type = None
+            
+            if file:
+                try:
+                    mime = magic.from_buffer(file.read(1024), mime=True)
+                    file.seek(0)
+                    
+                    if mime.startswith('image/'):
+                        file_type = 'IMAGE'
+                    elif mime == 'application/pdf':
+                        file_type = 'PDF'
+                    else:
+                        try:
+                            content = file.read().decode('utf-8')
+                            file_type = 'TEXT'
+                            file = ContentFile(content.encode('utf-8'))
+                        except:
+                            context['error'] = 'Format de fichier non supporté. Formats acceptés: texte, PDF, images.'
+                            return render(request, 'math_solver.html', context)
+                    
+                    problem_text = extract_text_from_file(file, file_type)
+                    
+                except Exception as e:
+                    logger.error(f"Erreur d'extraction du fichier: {str(e)}")
+                    context['error'] = f"Erreur lors du traitement du fichier: {str(e)}"
+                    return render(request, 'math_solver.html', context)
+            else:
+                problem_text = text_input
+                file_type = 'TEXT'
+            
+            # Résolution du problème
+            try:
+                solution = solve_math_problem(problem_text, language)
+            except Exception as e:
+                logger.error(f"Erreur de résolution: {str(e)}")
+                context['error'] = f"Erreur lors de la résolution du problème: {str(e)}"
+                return render(request, 'math_solver.html', context)
+            
+            processing_time = time.time() - start_time
+            
+            # Sauvegarde dans l'historique
+            try:
+                cleanup_old_entries(request.user)
+                
+                original_content = None
+                if file:
+                    file.seek(0)
+                    original_content = file.read()
+                    file.seek(0)
+                else:
+                    original_content = text_input.encode('utf-8')
+                
+                MathProblem.objects.create(
+                    user=request.user,
+                    input_type=file_type,
+                    original_input=original_content,
+                    extracted_problem=problem_text,
+                    solution=solution,
+                    processing_time=processing_time
+                )
+                
+                # Mettre à jour l'historique dans le contexte
+                context['history'] = MathProblem.objects.filter(user=request.user).order_by('-created_at')[:20]
+                
+            except Exception as e:
+                logger.error(f"Erreur de sauvegarde dans l'historique: {str(e)}")
+            
+            # Ajouter les résultats au contexte
+            context.update({
+                'problem': problem_text,
+                'solution': solution,
+                'processing_time': round(processing_time, 2),
+                'language': language,
+                'success': True
+            })
+            
+        except Exception as e:
+            logger.error(f"Erreur inattendue: {str(e)}")
+            context['error'] = 'Une erreur inattendue est survenue.'
+    
+    return render(request, 'math_solver.html', context)
 
-
+def cleanup_old_entries(user):
+    """Nettoyer les anciennes entrées (limite à 20)"""
+    if user.is_authenticated:
+        user_problems = MathProblem.objects.filter(user=user)
+        if user_problems.count() > 20:
+            ids_to_delete = user_problems.order_by('-created_at')[20:].values_list('id', flat=True)
+            MathProblem.objects.filter(id__in=ids_to_delete).delete()
